@@ -23,6 +23,9 @@ EXTENSION_MAP = {
 }
 
 
+
+
+
 class FileMetadata(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(db.String(50), nullable=False)
@@ -48,8 +51,79 @@ class FileMetadata(db.Model):
         }
 
 
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    device_id = db.Column(db.String(50), nullable=False)
+    clean_on_scan = db.Column(db.Boolean, default=False)  # Option for automatic cleaning
+    total_cleaned_size = db.Column(db.Integer, default=0)  # Total data cleaned (bytes)
+    total_files_scanned = db.Column(db.Integer, default=0)  # Total files scanned
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "device_id": self.device_id,
+            "clean_on_scan": self.clean_on_scan,
+            "total_cleaned_size": self.total_cleaned_size,
+            "total_files_scanned": self.total_files_scanned
+        }
+
+
 with app.app_context():
     db.create_all()
+    if not User.query.filter_by(username="pranav").first():
+        user1 = User(username="pranav", device_id="device_001", clean_on_scan=True, total_cleaned_size=0, total_files_scanned=0)
+        db.session.add(user1)
+
+    if not User.query.filter_by(username="shiv").first():
+        user2 = User(username="shiv", device_id="device_002", clean_on_scan=False, total_cleaned_size=0, total_files_scanned=0)
+        db.session.add(user2)
+    db.session.commit()
+
+
+@app.route('/stats', methods=['GET'])
+def get_statistics():
+    # Count files per category
+    category_stats = db.session.query(
+        FileMetadata.category, 
+        db.func.count(FileMetadata.id), 
+        db.func.sum(FileMetadata.size)
+    ).group_by(FileMetadata.category).all()
+
+    category_summary = {
+        cat: {"count": count, "total_size": total_size or 0} 
+        for cat, count, total_size in category_stats
+    }
+
+    # Fetch user stats
+    user_stats = User.query.all()
+    users_summary = {user.username: user.to_dict() for user in user_stats}
+
+    return jsonify({
+        "categories": category_summary,
+        "users": users_summary
+    })
+
+
+@app.route('/update_cleaning', methods=['POST'])
+def update_cleaning_preference():
+    data = request.json
+
+    if "username" not in data or "clean_on_scan" not in data:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    user = User.query.filter_by(username=data["username"]).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.clean_on_scan = data["clean_on_scan"]
+    db.session.commit()
+
+    return jsonify({"message": "Cleaning preference updated", "user": user.to_dict()})
+
+
+
 
 
 @app.route('/upload', methods=['POST'])
@@ -62,10 +136,13 @@ def upload_file_metadata():
 
     
     existing_file = FileMetadata.query.filter_by(hash=data["hash"]).first()
+    us = User.query.filter_by(username=data['username']).first()
     if existing_file:
-        return jsonify({"message": "File already exists", "file": existing_file.to_dict()}), 409
+        if us.clean_on_scan:
+            us.total_cleaned_size += 1
+        return jsonify({"message": "File already exists", "file": existing_file.to_dict(),"clean":us.clean_on_Scan}), 409
 
-    
+    us.total_files_scanned += 1
     new_file = FileMetadata(
         device_id=data["device_id"],
         username=data["username"],
