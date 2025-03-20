@@ -2,8 +2,10 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import os
 from datetime import datetime
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///files.db'
@@ -34,6 +36,7 @@ class FileMetadata(db.Model):
 
     def to_dict(self):
         return {
+            "id":self.id,
             "device_id": self.device_id,
             "username": self.username,
             "name": self.name,
@@ -48,7 +51,7 @@ class FileMetadata(db.Model):
 with app.app_context():
     db.create_all()
 
-#
+
 @app.route('/upload', methods=['POST'])
 def upload_file_metadata():
     data = request.json
@@ -78,6 +81,65 @@ def upload_file_metadata():
     db.session.commit()
 
     return jsonify({"message": "File metadata stored successfully", "file": new_file.to_dict()}), 201
+
+
+
+
+@app.route('/delete', methods=['POST'])
+def del_file_metadata():
+    data = request.json
+
+    required_fields = {"device_id", "username", "name"}
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    existing_file = FileMetadata.query.filter_by(device_id=data["device_id"], username=data["username"], name=data["name"]).first()
+    
+    if existing_file:
+        db.session.delete(existing_file)
+        db.session.commit()
+        return jsonify({"message": "File deleted successfully", "file": existing_file.to_dict()}), 200
+
+    return jsonify({"error": "File does not exist"}), 409
+
+
+@app.route('/mov', methods=['POST'])
+def mov_file_metadata():
+    data = request.json
+
+    required_fields = {"device_id", "username", "name", "old", "new"}
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    existing_file = FileMetadata.query.filter_by(device_id=data["device_id"], username=data["username"], name=data["name"]).first()
+    
+    if existing_file:
+        if existing_file.path != data["old"]:
+            return jsonify({"error": "Old path does not match"}), 400  # Optional validation
+        existing_file.path = data["new"]
+        db.session.commit()
+        return jsonify({"message": "File moved successfully", "file": existing_file.to_dict()}), 200
+
+    return jsonify({"error": "File does not exist"}), 409
+
+
+@app.route('/acc', methods=['POST'])
+def acc_file_metadata():
+    data = request.json
+
+    required_fields = {"device_id", "username", "name", "date"}
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    existing_file = FileMetadata.query.filter_by(device_id=data["device_id"], username=data["username"], name=data["name"]).first()
+    
+    if existing_file:
+        existing_file.last_access = datetime.fromisoformat(data["date"])
+        db.session.commit()
+        return jsonify({"message": "File access updated", "file": existing_file.to_dict()}), 200
+
+    return jsonify({"error": "File does not exist"}), 409
+
 
 @app.route('/files', methods=['GET'])
 def get_files():
