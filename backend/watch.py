@@ -56,10 +56,13 @@ def categorize_file(filename):
 def send_to_api(file_data):
     try:
         response = requests.post(API_URL+"/upload", json=file_data, timeout=5)
+        data = response.json()
         if response.status_code == 201:
             logging.info(f"Sent: {file_data['path']}")
         elif response.status_code == 409:
             logging.info(f" Already exists: {file_data['path']}")
+            print(f"{data["file"]["path"]} and {file_data['path']}")
+            
         else:
             logging.error(f"Failed to send {file_data['path']}: {response.text}")
     except requests.exceptions.RequestException as e:
