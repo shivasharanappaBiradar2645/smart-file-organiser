@@ -147,11 +147,11 @@ function DragHandle({id}: { id: number }) {
 
 const columns: ColumnDef<z.infer<typeof schema>>[] = [
 
-    // {
-    //     id: "drag",
-    //     header: () => null,
-    //     cell: ({row}) => <DragHandle id={row.original.id}/>,
-    // },
+    {
+        id: "drag",
+        header: () => null,
+        cell: ({row}) => <DragHandle id={row.original.id}/>,
+    },
 
     {
         id: "select",
@@ -181,7 +181,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     },
     {
         accessorKey: "header",
-        header: "Header",
+        header: "Name", // col name
         cell: ({row}) => {
             return <TableCellViewer item={row.original}/>
         },
@@ -217,112 +217,57 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
     },
     {
         accessorKey: "target",
-        header: () => <div className="w-full text-right">Target</div>,
+        header: () => <div className="w-full text-left">Target</div>,
         cell: ({row}) => (
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault()
-                    toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-                        loading: `Saving ${row.original.header}`,
-                        success: "Done",
-                        error: "Error",
-                    })
-                }}
-            >
-                <Label htmlFor={`${row.original.id}-target`} className="sr-only">
-                    Target
-                </Label>
-                <Input
-                    className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-                    defaultValue={row.original.target}
-                    id={`${row.original.id}-target`}
-                />
-            </form>
+            <div className="flex items-start">
+                {row.original.target}
+            </div>
         ),
     },
     {
         accessorKey: "limit",
-        header: () => <div className="w-full text-right">Limit</div>,
+        header: () => <div className="w-full text-left">Limit</div>,
         cell: ({row}) => (
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault()
-                    toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-                        loading: `Saving ${row.original.header}`,
-                        success: "Done",
-                        error: "Error",
-                    })
-                }}
-            >
-                <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-                    Limit
-                </Label>
-                <Input
-                    className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-                    defaultValue={row.original.limit}
-                    id={`${row.original.id}-limit`}
-                />
-            </form>
+            <div className="flex items-start">
+                {row.original.limit}
+            </div>
         ),
     },
     {
         accessorKey: "reviewer",
-        header: "Reviewer",
+        header: () => <div className="w-full text-left">Reviewer</div>,
         cell: ({row}) => {
-            const isAssigned = row.original.reviewer !== "Assign reviewer"
-
-            if (isAssigned) {
-                return row.original.reviewer
-            }
-
             return (
-                <>
-                    <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-                        Reviewer
-                    </Label>
-                    <Select>
-                        <SelectTrigger
-                            className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-                            size="sm"
-                            id={`${row.original.id}-reviewer`}
-                        >
-                            <SelectValue placeholder="Assign reviewer"/>
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                            <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-                            <SelectItem value="Jamik Tashpulatov">
-                                Jamik Tashpulatov
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </>
+                <div className="flex items-start">
+                    {row.original.reviewer}
+                </div>
             )
         },
     },
-    {
-        id: "actions",
-        cell: () => (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-                        size="icon"
-                    >
-                        <IconDotsVertical/>
-                        <span className="sr-only">Open menu</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-32">
-                    <DropdownMenuItem>Edit</DropdownMenuItem>
-                    <DropdownMenuItem>Make a copy</DropdownMenuItem>
-                    <DropdownMenuItem>Favorite</DropdownMenuItem>
-                    <DropdownMenuSeparator/>
-                    <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        ),
-    },
+    // {
+    //     id: "actions",
+    //     cell: () => (
+    //         <DropdownMenu>
+    //             <DropdownMenuTrigger asChild>
+    //                 <Button
+    //                     variant="ghost"
+    //                     className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+    //                     size="icon"
+    //                 >
+    //                     <IconDotsVertical/>
+    //                     <span className="sr-only">Open menu</span>
+    //                 </Button>
+    //             </DropdownMenuTrigger>
+    //             <DropdownMenuContent align="end" className="w-32">
+    //                 <DropdownMenuItem>Edit</DropdownMenuItem>
+    //                 <DropdownMenuItem>Make a copy</DropdownMenuItem>
+    //                 <DropdownMenuItem>Favorite</DropdownMenuItem>
+    //                 <DropdownMenuSeparator/>
+    //                 <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+    //             </DropdownMenuContent>
+    //         </DropdownMenu>
+    //     ),
+    // },
 ]
 
 function DraggableRow({row}: { row: Row<z.infer<typeof schema>> }) {
@@ -370,7 +315,6 @@ export function DataTable({
 
     const [loading, setLoading] = useState(false)
 
-    const API_URL = "http://192.168.134.67:5000/files";
     const sortableId = React.useId()
     // @ts-ignore
     const sensors = useSensors(
@@ -379,13 +323,15 @@ export function DataTable({
         useSensor(KeyboardSensor, {})
     )
 
+    const API_URL = "http://192.168.134.67:5000/files";
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const response = await fetch(API_URL);
                 const result = await response.json();
                 setData(result); // Update state with fetched data
-                console.log(data)
+                console.log(result)
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally {
@@ -394,7 +340,7 @@ export function DataTable({
         };
 
         fetchData();
-    }, []);
+    }, );
 
     const dataIds = React.useMemo<UniqueIdentifier[]>(
         () => data?.map(({id}) => id) || [],

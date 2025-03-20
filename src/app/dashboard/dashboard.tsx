@@ -1,11 +1,13 @@
 import { AppSidebar } from "@/components/app-sidebar"
 // import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
+// import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
-import data from "./data.json"
+
+// import data from "./data.json"
+import File_table from "@/components/file_table.tsx";
 
 export default function Dashboard() {
     return (
@@ -20,7 +22,8 @@ export default function Dashboard() {
                             {/*<div className="px-4 lg:px-6">*/}
                             {/*    <ChartAreaInteractive />*/}
                             {/*</div>*/}
-                            <DataTable data={data} />
+                            <File_table/>
+                            {/*<DataTable data={data} />*/}
                         </div>
                     </div>
                 </div>
