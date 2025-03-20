@@ -103,6 +103,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs"
+import {useEffect, useState} from "react";
 
 export const schema = z.object({
     id: z.number(),
@@ -145,11 +146,13 @@ function DragHandle({id}: { id: number }) {
 }
 
 const columns: ColumnDef<z.infer<typeof schema>>[] = [
-    {
-        id: "drag",
-        header: () => null,
-        cell: ({row}) => <DragHandle id={row.original.id}/>,
-    },
+
+    // {
+    //     id: "drag",
+    //     header: () => null,
+    //     cell: ({row}) => <DragHandle id={row.original.id}/>,
+    // },
+
     {
         id: "select",
         header: ({table}) => (
@@ -364,12 +367,34 @@ export function DataTable({
         pageIndex: 0,
         pageSize: 10,
     })
+
+    const [loading, setLoading] = useState(false)
+
+    const API_URL = "http://192.168.134.67:5000/files";
     const sortableId = React.useId()
+    // @ts-ignore
     const sensors = useSensors(
         useSensor(MouseSensor, {}),
         useSensor(TouchSensor, {}),
         useSensor(KeyboardSensor, {})
     )
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await fetch(API_URL);
+                const result = await response.json();
+                setData(result); // Update state with fetched data
+                console.log(data)
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
 
     const dataIds = React.useMemo<UniqueIdentifier[]>(
         () => data?.map(({id}) => id) || [],
@@ -497,55 +522,58 @@ export function DataTable({
                 className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
             >
                 <div className="overflow-hidden rounded-lg border">
-                    <DndContext
-                        collisionDetection={closestCenter}
-                        modifiers={[restrictToVerticalAxis]}
-                        onDragEnd={handleDragEnd}
-                        sensors={sensors}
-                        id={sortableId}
-                    >
-                        <Table>
-                            <TableHeader className="bg-muted sticky top-0 z-10">
-                                {table.getHeaderGroups().map((headerGroup) => (
-                                    <TableRow key={headerGroup.id}>
-                                        {headerGroup.headers.map((header) => {
-                                            return (
-                                                <TableHead key={header.id} colSpan={header.colSpan}>
-                                                    {header.isPlaceholder
-                                                        ? null
-                                                        : flexRender(
-                                                            header.column.columnDef.header,
-                                                            header.getContext()
-                                                        )}
-                                                </TableHead>
-                                            )
-                                        })}
-                                    </TableRow>
-                                ))}
-                            </TableHeader>
-                            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                                {table.getRowModel().rows?.length ? (
-                                    <SortableContext
-                                        items={dataIds}
-                                        strategy={verticalListSortingStrategy}
+
+                    {/*remove drag and drop*/}
+                    {/*<DndContext*/}
+                    {/*    collisionDetection={closestCenter}*/}
+                    {/*    modifiers={[restrictToVerticalAxis]}*/}
+                    {/*    onDragEnd={handleDragEnd}*/}
+                    {/*    sensors={sensors}*/}
+                    {/*    id={sortableId}*/}
+                    {/*>*/}
+
+                    <Table>
+                        <TableHeader className="bg-muted sticky top-0 z-10">
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id}>
+                                    {headerGroup.headers.map((header) => {
+                                        return (
+                                            <TableHead key={header.id} colSpan={header.colSpan}>
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(
+                                                        header.column.columnDef.header,
+                                                        header.getContext()
+                                                    )}
+                                            </TableHead>
+                                        )
+                                    })}
+                                </TableRow>
+                            ))}
+                        </TableHeader>
+                        <TableBody className="**:data-[slot=table-cell]:first:w-8">
+                            {table.getRowModel().rows?.length ? (
+                                <SortableContext
+                                    items={dataIds}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {table.getRowModel().rows.map((row) => (
+                                        <DraggableRow key={row.id} row={row}/>
+                                    ))}
+                                </SortableContext>
+                            ) : (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={columns.length}
+                                        className="h-24 text-center"
                                     >
-                                        {table.getRowModel().rows.map((row) => (
-                                            <DraggableRow key={row.id} row={row}/>
-                                        ))}
-                                    </SortableContext>
-                                ) : (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={columns.length}
-                                            className="h-24 text-center"
-                                        >
-                                            No results.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </DndContext>
+                                        No results.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                    {/*</DndContext>*/}
                 </div>
                 <div className="flex items-center justify-between px-4">
                     <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
