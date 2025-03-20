@@ -93,6 +93,14 @@ class User(db.Model):
             "total_files_scanned": self.total_files_scanned
         }
 
+class TaskQueue(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(50), nullable=False)
+    username = db.Column(db.String(50), nullable=False)
+    action = db.Column(db.String(10), nullable=False)  # "sync" or "archive"
+    path = db.Column(db.String(512), nullable=False)
+    status = db.Column(db.String(20), default="pending")  # "pending", "in_progress", "done"
+
 
 with app.app_context():
     db.create_all()
@@ -104,6 +112,40 @@ with app.app_context():
         user2 = User(username="shiv", device_id="device_002", clean_on_scan=True, total_cleaned_size=0, total_files_scanned=0)
         db.session.add(user2)
     db.session.commit()
+
+
+
+
+
+@app.route('/task', methods=['POST'])
+def add_task():
+    data = request.json
+    required_fields = {"device_id", "username", "action", "path"}
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    if data["action"] not in ["sync", "archive"]:
+        return jsonify({"error": "Invalid action"}), 400
+
+    task = TaskQueue(**data)
+    db.session.add(task)
+    db.session.commit()
+
+    return jsonify({"message": "Task added", "task": task.id}), 201
+
+@app.route('/tasks', methods=['GET'])
+def get_tasks():
+    tasks = TaskQueue.query.filter_by(status="pending").all()
+    return jsonify([{"id": t.id, "device_id": t.device_id, "username": t.username, "action": t.action, "path": t.path} for t in tasks])
+
+@app.route('/task/done/<int:task_id>', methods=['POST'])
+def complete_task(task_id):
+    task = TaskQueue.query.get(task_id)
+    if task:
+        task.status = "done"
+        db.session.commit()
+        return jsonify({"message": "Task marked as done"})
+    return jsonify({"error": "Task not found"}), 404
 
 
 @app.route('/stats/<user>', methods=['GET'])

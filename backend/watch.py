@@ -9,8 +9,53 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from google import genai
 from google.genai import types
+import imagehash
+from PIL import Image
+import PIL
+from dotenv import load_dotenv
+import threading
 
-import PIL.Image
+load_dotenv()
+geminkey = os.getenv("gemini_key")
+
+
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+
+SCOPES = ['https://www.googleapis.com/auth/drive.file']  # Modify scope if needed
+
+def authenticate_drive():
+    creds = None
+
+    # Load saved credentials if they exist
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    # If no valid credentials, request authentication
+    if not creds or not creds.valid:
+        flow = InstalledAppFlow.from_client_secrets_file("/home/shiv/programming/hackathon/smart-file-organiser/client_secret_420192572773-igkcgfbj8i3f4audaolfebnoaj0fiaqe.apps.googleusercontent.com.json", SCOPES)
+        
+        # Since it's a desktop app, we use `run_console()` instead of a local server
+        creds = flow.run_local_server(port=0)
+
+        # Save credentials for future use
+        with open("token.json", "w") as token_file:
+            token_file.write(creds.to_json())
+
+    return creds
+
+def upload_file(file_path):
+    creds = authenticate_drive()
+    service = build('drive', 'v3', credentials=creds)
+
+    file_metadata = {'name': os.path.basename(file_path)}
+    media = MediaFileUpload(file_path, resumable=True)
+
+    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    print(f"File uploaded successfully! File ID: {file.get('id')}")
+
 
 logging.basicConfig(filename="scanner.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -34,10 +79,7 @@ EXT_TO_CATEGORY = {ext: cat for cat, exts in EXTENSION_MAP.items() for ext in ex
 EXCLUDED_DIRS = {'Library', '.config', '.local', '.cache', 'Applications', 'node_modules', 'venv', '.npm', '.git'}
 EXCLUDED_FILE_TYPES = {'.log', '.tmp', '.bak'}
 
-# Generate SHA-256 hash for a file
-import hashlib
-import imagehash
-from PIL import Image
+
 
 
 
@@ -78,7 +120,7 @@ def send_to_api(file_data):
             logging.info(f"Sent: {file_data['path']}")
             if file_data['category'] == "images":
                 image = PIL.Image.open(file_data['path'])
-                client = genai.Client(api_key="AIzaSyDHECcCrB7YCGk9gstgTOTWX8SP9zp3QtU")
+                client = genai.Client(api_key=geminkey)
                 response = client.models.generate_content(model="gemini-2.0-flash",contents=["What is this image?", image])
                 requests.post(API_URL+"/image/upload",json={
                      "device_id": file_data["device_id"],
@@ -336,8 +378,44 @@ def monitor():
         
 
 
+
+TASKS_API = API_URL + "/tasks"
+COMPLETE_TASK_API = API_URL + "/task/done"
+
+def process_task(task):
+    print(f"Processing {task['action']} for {task['path']}")
+    
+    if task["action"] == "sync":
+        upload_file(task["path"])
+    elif task["action"] == "archive":
+        os.rename(task["path"], task["path"] + ".archived")
+
+    # Mark task as done
+    requests.post(COMPLETE_TASK_API + f"/{task['id']}")
+
+def poll_tasks():
+    while True:
+        try:
+            response = requests.get(TASKS_API)
+            tasks = response.json()
+
+            if tasks:
+                threads = []
+                for task in tasks:
+                    t = threading.Thread(target=process_task, args=(task,))
+                    t.start()
+                    threads.append(t)
+                
+                for t in threads:
+                    t.join()
+        except Exception as e:
+            print(f"Error fetching tasks: {e}")
+        
+        time.sleep(5)
+
 if __name__ == '__main__':
     scan_home_directory()
+    threading.Thread(target=poll_tasks, daemon=True).start()
     monitor()
 
 
