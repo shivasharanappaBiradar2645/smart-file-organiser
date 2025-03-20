@@ -7,13 +7,17 @@ import time
 import logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from google import genai
+from google.genai import types
+
+import PIL.Image
 
 logging.basicConfig(filename="scanner.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # API Config
 API_URL = "http://192.168.134.67:5000"  
-DEVICE_ID = "DEVICE123" 
-USERNAME = "user001"  
+DEVICE_ID = "device_002" 
+USERNAME = "shiv"  
 
 # File Categories Mapping
 EXTENSION_MAP = {
@@ -31,16 +35,29 @@ EXCLUDED_DIRS = {'Library', '.config', '.local', '.cache', 'Applications', 'node
 EXCLUDED_FILE_TYPES = {'.log', '.tmp', '.bak'}
 
 # Generate SHA-256 hash for a file
+import hashlib
+import imagehash
+from PIL import Image
+
+
+
 def generate_hash(file_path):
-    hasher = hashlib.sha256()
+    """Generate a SHA-256 or perceptual hash based on file type"""
     try:
-        with open(file_path, 'rb') as f:
-            while chunk := f.read(4096):  
-                hasher.update(chunk)
-        return hasher.hexdigest()
+        # Check if the file is an image
+        if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp')):
+            with Image.open(file_path) as img:
+                return str(imagehash.phash(img))  # Perceptual hash
+        else:
+            # For non-image files, use SHA-256
+            hasher = hashlib.sha256()
+            with open(file_path, "rb") as f:
+                while chunk := f.read(4096):
+                    hasher.update(chunk)
+            return hasher.hexdigest()
     except Exception as e:
-        logging.warning(f"Failed to read {file_path}: {e}")
-        return None  
+        print(f"Error generating hash for {file_path}: {e}")
+        return None
 
 TRASH_DIRS = [
     os.path.expanduser("~/.local/share/Trash/files"),  # Linux
@@ -59,10 +76,27 @@ def send_to_api(file_data):
         data = response.json()
         if response.status_code == 201:
             logging.info(f"Sent: {file_data['path']}")
+            if file_data['category'] == "images":
+                image = PIL.Image.open(file_data['path'])
+                client = genai.Client(api_key="AIzaSyDHECcCrB7YCGk9gstgTOTWX8SP9zp3QtU")
+                response = client.models.generate_content(model="gemini-2.0-flash",contents=["What is this image?", image])
+                requests.post(API_URL+"/image/upload",json={
+                     "device_id": file_data["device_id"],
+                    "username": file_data["username"],
+                    "name": file_data["name"],
+                    "path": file_data["path"],
+                    "response": response.text.lower()
+                },timeout=5)
+                print(response.text + "/n/n")
+
+
         elif response.status_code == 409:
             logging.info(f" Already exists: {file_data['path']}")
-            print(f"{data["file"]["path"]} and {file_data['path']}")
-            
+            if data["clean"]:
+                try:
+                    os.remove(file_data['path'])
+                except:
+                    print("failed")
         else:
             logging.error(f"Failed to send {file_data['path']}: {response.text}")
     except requests.exceptions.RequestException as e:
@@ -125,8 +159,9 @@ def acc_to_api(filename,dates):
 
 
 def scan_home_directory():
-    home_dir = os.path.expanduser("~")
-    scanned_count = 0
+    #home_dir = os.path.expanduser("~")
+    #scanned_count = 0
+    home_dir = "/home/shiv/programming/hackathon/smart-file-organiser/test"
 
     for root, _, files in os.walk(home_dir):
        
@@ -173,10 +208,10 @@ def scan_home_directory():
                 send_to_api(file_data)
 
               
-                scanned_count += 1
-                if scanned_count == 50:
-                    logging.info(" Scanned 50 files, stopping for now...")
-                    return
+                # scanned_count += 1
+                # if scanned_count == 50:
+                #     logging.info(" Scanned 50 files, stopping for now...")
+                #     return
 
             except Exception as e:
                 logging.error(f"Error processing {file_path}: {e}")

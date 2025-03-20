@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 from datetime import datetime
 from flask_cors import CORS
-
+from imagehash import hex_to_hash
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
@@ -22,6 +22,25 @@ EXTENSION_MAP = {
     'others': []
 }
 
+class ImagesData(db.Model):
+    id = db.Column(db.Integer,primary_key=True)
+    device_id = db.Column(db.String(50), nullable=False)
+    username = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    path = db.Column(db.String(512), unique=True, nullable=False)
+    data = db.Column(db.String())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "device_id": self.device_id,
+            "username": self.username,
+            "name": self.name,
+            "path": self.path,
+            "data": self.data
+        }
+
+
 
 
 
@@ -36,6 +55,8 @@ class FileMetadata(db.Model):
     hash = db.Column(db.String(64), unique=True, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     last_access = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    sync = db.Column(db.Boolean,default=False)
+    archive = db.Column(db.Boolean,default=False)
 
     def to_dict(self):
         return {
@@ -47,7 +68,9 @@ class FileMetadata(db.Model):
             "size": self.size,
             "hash": self.hash,
             "category": self.category,
-            "last_access": self.last_access.isoformat()
+            "last_access": self.last_access.isoformat(),
+            "sync":self.sync,
+            "archive":self.archive
         }
 
 
@@ -58,6 +81,7 @@ class User(db.Model):
     clean_on_scan = db.Column(db.Boolean, default=False)  # Option for automatic cleaning
     total_cleaned_size = db.Column(db.Integer, default=0)  # Total data cleaned (bytes)
     total_files_scanned = db.Column(db.Integer, default=0)  # Total files scanned
+
 
     def to_dict(self):
         return {
@@ -77,33 +101,41 @@ with app.app_context():
         db.session.add(user1)
 
     if not User.query.filter_by(username="shiv").first():
-        user2 = User(username="shiv", device_id="device_002", clean_on_scan=False, total_cleaned_size=0, total_files_scanned=0)
+        user2 = User(username="shiv", device_id="device_002", clean_on_scan=True, total_cleaned_size=0, total_files_scanned=0)
         db.session.add(user2)
     db.session.commit()
 
 
-@app.route('/stats', methods=['GET'])
-def get_statistics():
-    # Count files per category
+@app.route('/stats/<user>', methods=['GET'])
+def get_statistics(user):
+   
     category_stats = db.session.query(
         FileMetadata.category, 
         db.func.count(FileMetadata.id), 
         db.func.sum(FileMetadata.size)
-    ).group_by(FileMetadata.category).all()
+    ).group_by(FileMetadata.category).filter_by(username=user).all()
 
     category_summary = {
         cat: {"count": count, "total_size": total_size or 0} 
         for cat, count, total_size in category_stats
     }
 
-    # Fetch user stats
-    user_stats = User.query.all()
-    users_summary = {user.username: user.to_dict() for user in user_stats}
+    for category in EXTENSION_MAP.keys():
+        if category not in category_summary:
+            category_summary[category] = {"count": 0, "total_size": 0}
+
+  
+    user_stats = User.query.filter_by(username=user).first()
+    
 
     return jsonify({
         "categories": category_summary,
-        "users": users_summary
+        "user": user_stats.to_dict()
     })
+
+
+
+
 
 
 @app.route('/update_cleaning', methods=['POST'])
@@ -123,7 +155,36 @@ def update_cleaning_preference():
     return jsonify({"message": "Cleaning preference updated", "user": user.to_dict()})
 
 
+@app.route('/image/upload', methods=['POST'])
+def upload_image_file_metadata():
+    data = request.json
 
+    required_fields = {"device_id", "username", "name", "path", "response"}
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    new_file = ImagesData(
+        device_id=data["device_id"],
+        username=data["username"],
+        name=data["name"],
+        path=data["path"],
+        data=data["response"]
+    )
+
+    db.session.add(new_file)
+    db.session.commit()
+
+    return jsonify({"message": "photo stored successfully", "file": new_file.to_dict()}), 201
+
+@app.route('/image/search/<data>', methods=['GET'])
+def search_images_data(data):
+    
+    results = ImagesData.query.filter(ImagesData.data.like(f"%{data}%")).all()
+
+    if not results:
+        return jsonify({"message": "No matching images found"}), 404
+
+    return jsonify([image.to_dict() for image in results]), 200
 
 
 @app.route('/upload', methods=['POST'])
@@ -134,13 +195,14 @@ def upload_file_metadata():
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    
+
     existing_file = FileMetadata.query.filter_by(hash=data["hash"]).first()
     us = User.query.filter_by(username=data['username']).first()
     if existing_file:
         if us.clean_on_scan:
-            us.total_cleaned_size += 1
-        return jsonify({"message": "File already exists", "file": existing_file.to_dict(),"clean":us.clean_on_Scan}), 409
+            us.total_cleaned_size += data["size"]
+            db.session.commit()
+        return jsonify({"message": "File already exists", "file": existing_file.to_dict(),"clean":us.clean_on_scan}), 409
 
     us.total_files_scanned += 1
     new_file = FileMetadata(
@@ -151,7 +213,8 @@ def upload_file_metadata():
         size=data["size"],
         hash=data["hash"],
         category=data["category"],
-        last_access=datetime.fromisoformat(data["last_access"])
+        last_access=datetime.fromisoformat(data["last_access"]),
+        archive=True if data["category"] == False else False
     )
 
     db.session.add(new_file)
