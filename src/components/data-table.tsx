@@ -24,7 +24,8 @@ import {
     IconChevronRight,
     IconChevronsLeft,
     IconChevronsRight,
-    IconCircleCheckFilled,
+
+
     IconDotsVertical,
     IconGripVertical,
     IconLayoutColumns,
@@ -206,7 +207,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
                 {/*<div>*/}
 
                 {row.original.status === "Done" ? (
-                    <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400"/>
+                   <></>
                 ) : (
                     <IconLoader/>
                 )}

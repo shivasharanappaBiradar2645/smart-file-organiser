@@ -3,13 +3,13 @@ import {
   IconCamera,
   IconChartBar,
   IconDashboard,
- 
+
   IconFileAi,
   IconFileDescription,
 
   IconFolder,
   IconInnerShadowTop,
-  IconListDetails,
+  IconListDetails, IconSearch,
 
 
   IconSettings,
@@ -37,30 +37,15 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "#",
-      icon: IconDashboard,
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
-    },
-    {
       title: "Analytics",
-      url: "#",
+      url: "",
       icon: IconChartBar,
     },
     {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
-    },
+      title : "Image Search",
+      url: "../app/search/image-search.tsx",
+      icon: IconSearch,
+    }
   ],
   navClouds: [
     {
@@ -133,7 +118,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <span className="text-base font-semibold">Intelligent-DMS</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

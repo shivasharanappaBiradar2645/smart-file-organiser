@@ -11,8 +11,8 @@ function App() {
 
     return (
         <StrictMode>
-            {/*<Dashboard/>*/}
-            <Search/>
+            <Dashboard/>
+            {/*<Search/>*/}
         </StrictMode>
     )
 }

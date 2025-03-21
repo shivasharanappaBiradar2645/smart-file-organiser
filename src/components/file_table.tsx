@@ -10,17 +10,24 @@ import {
     VisibilityState,
 } from "@tanstack/react-table";
 
-import {Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from "@/components/ui/table";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button"
-import {Input} from "@/components/ui/input"
+import {MoreHorizontal} from "lucide-react"
 
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuPortal, // Added portal import to render dropdown content outside overflow containers
 } from "@/components/ui/dropdown-menu"
+
+import {Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from "@/components/ui/table";
+import {Badge} from "@/components/ui/badge";
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {IconDotsVertical} from "@tabler/icons-react";
 
 
 const API_URL = "http://192.168.134.67:5000/files";
@@ -51,6 +58,15 @@ const columns: ColumnDef<FileData>[] = [
             </Badge>
         ),
     },
+    {
+        accessorKey: "sync",
+        header: "Sync",
+        cell: ({row}) => (
+            <div className="flex items-start">
+                {row.original.sync === true ? <div>True</div> : <div>False</div>}
+            </div>
+        ),
+    }
 ];
 
 // File data type
@@ -60,6 +76,7 @@ type FileData = {
     size: number;
     last_access: string;
     category: string;
+    sync: boolean;
 };
 
 const FileTable = () => {
@@ -88,6 +105,11 @@ const FileTable = () => {
 
         fetchData();
     }, []);
+
+
+    useEffect(() => {
+        console.log(data)
+    }, [data])
 
     const table = useReactTable({
         data,
@@ -156,7 +178,7 @@ const FileTable = () => {
 
             {/*table*/}
             <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-                <div className="overflow-hidden rounded-lg border">
+                <div className=" rounded-lg border">
                     {loading ? (
                         <p className="text-center py-4">Loading...</p>
                     ) : (
