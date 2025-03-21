@@ -29,8 +29,8 @@ function App() {
     return (
         <>
             {/*<div>{renderComponent()}</div>*/}
-            {/*<Dashboard />*/}
-            <Search />
+            <Dashboard />
+            {/*<Search />*/}
         </>
     );
 }
