@@ -124,11 +124,22 @@ def add_task():
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    if data["action"] not in ["sync", "archive"]:
+    if data["action"] not in ["sync","unsync","unarchive", "archive"]:
         return jsonify({"error": "Invalid action"}), 400
+    
+    existing_file = FileMetadata.query.filter_by(path=data["path"]).first()
+    if not existing_file:
+        return jsonify({"error": "Invalid path"}), 400
+    
+    if data["action"] =="sync" :
+        existing_file.sync = True
+    else:
+        existing_file.archive = True
 
     task = TaskQueue(**data)
     db.session.add(task)
+    
+    
     db.session.commit()
 
     return jsonify({"message": "Task added", "task": task.id}), 201
