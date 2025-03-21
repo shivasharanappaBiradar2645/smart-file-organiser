@@ -117,32 +117,54 @@ with app.app_context():
 
 
 
-@app.route('/task', methods=['POST'])
-def add_task():
-    data = request.json
-    required_fields = {"device_id", "username", "action", "path"}
-    if not all(field in data for field in required_fields):
-        return jsonify({"error": "Missing required fields"}), 400
+@app.route('/task', methods=['POST', 'GET'])
+def manage_tasks():
+    if request.method == 'POST':
+        data = request.json
+        required_fields = {"device_id", "username", "action", "path"}
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
 
-    if data["action"] not in ["sync","unsync","unarchive", "archive"]:
-        return jsonify({"error": "Invalid action"}), 400
-    
-    existing_file = FileMetadata.query.filter_by(path=data["path"]).first()
-    if not existing_file:
-        return jsonify({"error": "Invalid path"}), 400
-    
-    if data["action"] =="sync" :
-        existing_file.sync = True
-    else: 
-        existing_file.archive = True
+        if data["action"] not in ["sync", "unsync", "unarchive", "archive"]:
+            return jsonify({"error": "Invalid action"}), 400
 
-    task = TaskQueue(**data)
-    db.session.add(task)
-    
-    
-    db.session.commit()
+        existing_file = FileMetadata.query.filter_by(path=data["path"]).first()
+        if not existing_file:
+            return jsonify({"error": "Invalid path"}), 400
 
-    return jsonify({"message": "Task added", "task": task.id}), 201
+        if data["action"] == "sync":
+            existing_file.sync = True
+        else:
+            existing_file.archive = True
+
+        task = TaskQueue(**data)
+        db.session.add(task)
+        db.session.commit()
+
+        return jsonify({"message": "Task added", "task": task.id}), 201
+
+    elif request.method == 'GET':
+        # Add all files to the sync queue
+        files_to_sync = FileMetadata.query.filter_by(sync=False).all()
+        
+        if not files_to_sync:
+            return jsonify({"message": "No files to sync"}), 200
+
+        tasks = []
+        for file in files_to_sync:
+            task_data = {
+                "device_id": "default_device",
+                "username": "default_user",
+                "action": "sync",
+                "path": file.path
+            }
+            task = TaskQueue(**task_data)
+            db.session.add(task)
+            file.sync = True  # Mark as synced
+            tasks.append(task_data)
+
+        db.session.commit()
+        return jsonify({"message": f"{len(tasks)} tasks added", "tasks": tasks}), 201
 
 @app.route('/tasks', methods=['GET'])
 def get_tasks():

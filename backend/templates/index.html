@@ -1,3 +1,6 @@
+
+<!--backend guy likes being an idiot-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -110,19 +113,19 @@
                     <td>${file.name}</td>
                     <td>${file.path}</td>
                     <td>${(file.size / (1024 * 1024)).toFixed(2)} MB</td>
-                    <td>${file.archive ? 'Yes' : 'No'}</td>
-                    <td>${file.sync ? 'Yes' : 'No'}</td>
+                    <td><input type="checkbox" ${file.archive ? 'checked' : ''} onclick="toggleTask('${file.path}', 'archive')"></td>
+                    <td><input type="checkbox" ${file.sync ? 'checked' : ''} onclick="toggleTask('${file.path}', 'sync')"></td>
                 </tr>`
             ).join('');
         }
 
-        document.getElementById('cleaningToggle').addEventListener('change', async function() {
-            await fetch('/update_cleaning', {
+        async function toggleTask(path, action) {
+            await fetch('/task', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: 'shiv', clean_on_scan: this.checked })
+                body: JSON.stringify({ device_id: 'device_1', username: 'shiv', action, path })
             });
-        });
+        }
 
         document.getElementById('imageSearch').addEventListener('input', async function () {
             const search = this.value;
@@ -134,12 +137,6 @@
             } else {
                 imageResults.innerHTML = '';
             }
-        });
-        document.getElementById('fileSearch').addEventListener('input', function () {
-            const search = this.value.toLowerCase();
-            document.querySelectorAll("#fileTable tr").forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(search) ? "" : "none";
-            });
         });
 
         fetchStats();
