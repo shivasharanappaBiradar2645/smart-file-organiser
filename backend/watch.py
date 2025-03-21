@@ -413,9 +413,47 @@ def poll_tasks():
         
         time.sleep(5)
 
+
+def archive_old_files():
+    while True:
+        try:
+            home_dir = "/home/shiv/programming/hackathon/smart-file-organiser/test"  # Change as needed
+            cutoff_date = datetime.datetime.now() - datetime.timedelta(days=30)
+
+            for root, _, files in os.walk(home_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    
+                    try:
+                        stat_info = os.stat(file_path, follow_symlinks=True)
+                        last_access_time = datetime.datetime.fromtimestamp(stat_info.st_atime)
+                        
+                        if last_access_time < cutoff_date:
+                            logging.info(f"Archiving: {file_path}")
+                            task_data = {
+                                "device_id": DEVICE_ID,
+                                "username": USERNAME,
+                                "action": "archive",
+                                "path": file_path
+                            }
+                            response = requests.post(API_URL+"/task", json=task_data, timeout=5)
+                            if response.status_code == 201:
+                                logging.info(f"Sent archive task for: {file_path}")
+                            else:
+                                logging.error(f"Failed to send archive task for {file_path}: {response.text}")
+                    except Exception as e:
+                        logging.error(f"Error processing {file_path}: {e}")
+
+        except Exception as e:
+            logging.error(f"Error in archive thread: {e}")
+        
+        time.sleep(21600) 
+
+
 if __name__ == '__main__':
     scan_home_directory()
     threading.Thread(target=poll_tasks, daemon=True).start()
+    threading.Thread(target=archive_old_files, daemon=True).start()
     monitor()
 
 

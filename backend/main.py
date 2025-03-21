@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 import os
 from datetime import datetime
@@ -133,7 +133,7 @@ def add_task():
     
     if data["action"] =="sync" :
         existing_file.sync = True
-    else:
+    else: 
         existing_file.archive = True
 
     task = TaskQueue(**data)
@@ -157,6 +157,10 @@ def complete_task(task_id):
         db.session.commit()
         return jsonify({"message": "Task marked as done"})
     return jsonify({"error": "Task not found"}), 404
+
+@app.route('/')
+def index():
+    return render_template("index.html")
 
 
 @app.route('/stats/<user>', methods=['GET'])
