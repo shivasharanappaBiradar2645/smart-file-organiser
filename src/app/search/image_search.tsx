@@ -5,7 +5,7 @@ import {Input} from "@/components/ui/input.tsx";
 import {useEffect, useState} from "react";
 import {Card, CardHeader, CardTitle, CardContent} from "@/components/ui/card";
 
-export default function Search() {
+export default function Search(setPage) {
     const [query, setQuery] = useState("");
     const [res, setRes] = useState([]);
     const endpoint = "http://192.168.134.67:5000/image/search/";
@@ -31,7 +31,7 @@ export default function Search() {
 
     return (
         <SidebarProvider>
-            <AppSidebar variant="inset"/>
+            <AppSidebar variant="inset" setActiveComponent={setPage}/>
             <SidebarInset>
                 <SiteHeader header={"Image Search"}/>
                 <div className="flex flex-1 flex-col">

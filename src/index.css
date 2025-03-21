@@ -118,3 +118,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+.GOS{
+  font-family: 'GameOfSquid', sans-serif;
+}
+
+@font-face {
+  font-family: 'GameOfSquid';
+  src:url('/public/GameOfSquids.otf');
+}
