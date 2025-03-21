@@ -28,6 +28,7 @@ import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
 import {IconDotsVertical} from "@tabler/icons-react";
+import { ToastAction } from "@/components/ui/toast"
 
 
 const API_URL = "http://192.168.134.67:5000/files";
@@ -132,7 +133,7 @@ const FileTable = () => {
         <>
             <div className="flex flex-row justify-between px-6">
                 {/*filtering*/}
-                <div className="flex items-center ">
+                <div className="flex items-center">
                     <Input
                         placeholder="Filter Names..."
                         value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
@@ -143,38 +144,55 @@ const FileTable = () => {
                     />
                 </div>
 
-                {/*col visibility*/}
-                <div className="flex items-center ">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="ml-auto">
-                                Columns
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            {table
-                                .getAllColumns()
-                                .filter(
-                                    (column) => column.getCanHide()
-                                )
-                                .map((column) => {
-                                    return (
-                                        <DropdownMenuCheckboxItem
-                                            key={column.id}
-                                            className="capitalize"
-                                            checked={column.getIsVisible()}
-                                            onCheckedChange={(value) =>
-                                                column.toggleVisibility(!!value)
-                                            }
-                                        >
-                                            {column.id}
-                                        </DropdownMenuCheckboxItem>
+                <div className="flex flex-row justify-between">
+                    {/*col visibility*/}
+                    <div className="flex items-center ">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="ml-auto">
+                                    Columns
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {table
+                                    .getAllColumns()
+                                    .filter(
+                                        (column) => column.getCanHide()
                                     )
-                                })}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                    .map((column) => {
+                                        return (
+                                            <DropdownMenuCheckboxItem
+                                                key={column.id}
+                                                className="capitalize"
+                                                checked={column.getIsVisible()}
+                                                onCheckedChange={(value) =>
+                                                    column.toggleVisibility(!!value)
+                                                }
+                                            >
+                                                {column.id}
+                                            </DropdownMenuCheckboxItem>
+                                        )
+                                    })}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                    {/*sync*/}
+                    <Button className={"mx-2"} onClick={()=>{
+                        fetch('http://192.168.134.67:5000/task', {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+
+                        })
+                            .then(response => response.text())
+                            .then(text => alert("Sync Successfully"))
+
+
+
+                    }}>Sync</Button>
                 </div>
             </div>
+
 
             {/*table*/}
             <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
